@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package encoding-json-with-options
+package jsonwithoptions
 
 import "unicode/utf8"
 
