@@ -57,6 +57,26 @@ var optionalsExpected = `{
  "sto": {}
 }`
 
+// adds back in all the expected omissions that are due to omitempty tag
+var optionalsExpectedWithEmitUnpopulated = `{
+ "sr": "",
+ "so": "",
+ "omitempty": 0,
+ "io": 0,
+ "slr": null,
+ "slo": null,
+ "mr": {},
+ "Mo": {},
+ "fr": 0,
+ "fo": 0,
+ "br": false,
+ "bo": false,
+ "ur": 0,
+ "uo": 0,
+ "str": {},
+ "sto": {}
+}`
+
 func TestOmitEmpty(t *testing.T) {
 	var o Optionals
 	o.Sw = "something"
@@ -69,6 +89,21 @@ func TestOmitEmpty(t *testing.T) {
 	}
 	if got := string(got); got != optionalsExpected {
 		t.Errorf(" got: %s\nwant: %s\n", got, optionalsExpected)
+	}
+}
+
+func TestOmitEmptyWithEmitUnpopulated(t *testing.T) {
+	var o Optionals
+	o.Sw = "something"
+	o.Mr = map[string]any{}
+	o.Mo = map[string]any{}
+
+	got, err := MarshalIndentWithOptions(&o, "", " ", DefaultEncodingOptions.WithEmitUnpopulated(true))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := string(got); got != optionalsExpectedWithEmitUnpopulated {
+		t.Errorf(" got: %s\nwant: %s\n", got, optionalsExpectedWithEmitUnpopulated)
 	}
 }
 

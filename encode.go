@@ -155,10 +155,16 @@ import (
 // handle them. Passing cyclic structures to Marshal will result in
 // an error.
 func Marshal(v any) ([]byte, error) {
+	return MarshalWithOptions(v, DefaultEncodingOptions)
+}
+
+// MarshallWithOptions is like Marshal but takes encoding options to customize behaviour.
+// Note that in the defaultMarshalOpts, which are used by Marshall, escapeHtml is true
+func MarshalWithOptions(v any, options EncodingOptions) ([]byte, error) {
 	e := newEncodeState()
 	defer encodeStatePool.Put(e)
 
-	err := e.marshal(v, encOpts{escapeHTML: true})
+	err := e.marshal(v, options.encOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +177,13 @@ func Marshal(v any) ([]byte, error) {
 // Each JSON element in the output will begin on a new line beginning with prefix
 // followed by one or more copies of indent according to the indentation nesting.
 func MarshalIndent(v any, prefix, indent string) ([]byte, error) {
-	b, err := Marshal(v)
+	return MarshalIndentWithOptions(v, prefix, indent, DefaultEncodingOptions)
+}
+
+// MarshallIndentWithOptions is like MarshalOptions but takes encoding options to customize behaviour.
+// Note that in the defaultMarshalOpts, which are used by Marshall, escapeHtml is true
+func MarshalIndentWithOptions(v any, prefix, indent string, options EncodingOptions) ([]byte, error) {
+	b, err := MarshalWithOptions(v, options)
 	if err != nil {
 		return nil, err
 	}
@@ -363,6 +375,34 @@ type encOpts struct {
 	quoted bool
 	// escapeHTML causes '<', '>', and '&' to be escaped in JSON strings.
 	escapeHTML bool
+	// emitUnpopulated causes marshalling to disregard the existence of the omitempty tag
+	// and include all fields with that tag regardless of their value
+	emitUnpopulated bool
+}
+
+// EncodingOptions makes the implementation type encOpts public, but only modififable via its With... methods
+type EncodingOptions struct {
+	encOpts
+}
+
+var DefaultEncodingOptions EncodingOptions = EncodingOptions{}.WithEscapeHTML(true)
+
+func (o EncodingOptions) WithEmitQuoted(value bool) EncodingOptions {
+	result := o
+	result.quoted = value
+	return result
+}
+
+func (o EncodingOptions) WithEscapeHTML(value bool) EncodingOptions {
+	result := o
+	result.escapeHTML = value
+	return result
+}
+
+func (o EncodingOptions) WithEmitUnpopulated(value bool) EncodingOptions {
+	result := o
+	result.emitUnpopulated = value
+	return result
 }
 
 type encoderFunc func(e *encodeState, v reflect.Value, opts encOpts)
@@ -745,7 +785,8 @@ FieldLoop:
 			fv = fv.Field(i)
 		}
 
-		if f.omitEmpty && isEmptyValue(fv) {
+		respectOmitEmpty := !opts.emitUnpopulated
+		if respectOmitEmpty && f.omitEmpty && isEmptyValue(fv) {
 			continue
 		}
 		e.WriteByte(next)
